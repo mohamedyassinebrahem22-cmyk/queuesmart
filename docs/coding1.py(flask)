@@ -1,0 +1,50 @@
+import os
+import sqlite3
+from flask import Flask
+
+app = Flask(__name__)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE = os.path.join(BASE_DIR, "queuesmart.db")
+SCHEMA = os.path.join(BASE_DIR, "database", "schema.sql")
+
+
+def get_db():
+    """Ouvre une connexion à la base de données."""
+    connexion = sqlite3.connect(DATABASE)
+    connexion.row_factory = sqlite3.Row
+    connexion.execute("PRAGMA foreign_keys = ON")
+    return connexion
+
+
+def init_db():
+    """Crée les tables à partir de schema.sql."""
+    connexion = get_db()
+    with open(SCHEMA, encoding="utf-8") as f:
+        connexion.executescript(f.read())
+    connexion.close()
+
+
+# La base n'est créée qu'une seule fois, si le fichier n'existe pas encore
+if not os.path.exists(DATABASE):
+    init_db()
+
+
+@app.route("/")
+def accueil():
+    return "QueueSmart fonctionne !"
+
+
+@app.route("/test-db")
+def test_db():
+    connexion = get_db()
+    lignes = connexion.execute(
+        "SELECT name FROM sqlite_master "
+        "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+    ).fetchall()
+    connexion.close()
+    return "Tables : " + ", ".join(ligne["name"] for ligne in lignes)
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
